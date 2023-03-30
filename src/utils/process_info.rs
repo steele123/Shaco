@@ -10,6 +10,10 @@ const TARGET_PROCESS: &str = "LeagueClientUx.";
 #[cfg(target_os = "macos")]
 const TARGET_PROCESS: &str = "LeagueClientUx";
 
+const PORT_ARG: &str = "--riotclient-app-port=";
+
+const TOKEN_ARG: &str = "--riotclient-auth-token=";
+
 pub(crate) fn get_auth_info() -> Result<(String, String), ProcessInfoError> {
     let mut sys = System::new_all();
     sys.refresh_processes();
@@ -23,14 +27,14 @@ pub(crate) fn get_auth_info() -> Result<(String, String), ProcessInfoError> {
 
     let port = args
         .iter()
-        .find(|arg| arg.starts_with("--app-port="))
-        .map(|arg| arg.strip_prefix("--app-port=").unwrap().to_string())
+        .find(|arg| arg.starts_with(PORT_ARG))
+        .map(|arg| arg.strip_prefix(PORT_ARG).unwrap().to_string())
         .ok_or(ProcessInfoError::PortNotFound)?;
     let auth_token = args
         .iter()
-        .find(|arg| arg.starts_with("--remoting-auth-token="))
+        .find(|arg| arg.starts_with(TOKEN_ARG))
         .map(|arg| {
-            arg.strip_prefix("--remoting-auth-token=")
+            arg.strip_prefix(TOKEN_ARG)
                 .unwrap()
                 .to_string()
         })
