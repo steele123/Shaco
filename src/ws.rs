@@ -13,7 +13,7 @@ use tokio_tungstenite::{
 use crate::{
     error::LcuWebsocketError,
     model::ws::{LcuEvent, LcuSubscriptionType},
-    utils::process_info,
+    utils::process_info, rest::LCUClientInfo,
 };
 
 /// A client for the League-Client(LCU) websocket API
@@ -26,6 +26,10 @@ impl LcuWebsocketClient {
         let info = process_info::get_lcu_client_info()
             .map_err(|e| LcuWebsocketError::LcuNotAvailable(e.to_string()))?;
 
+        Self::connect_with_info(info).await
+    }
+
+    async fn connect_with_info(info: LCUClientInfo) -> Result<Self, LcuWebsocketError> {
         let cert = native_tls::Certificate::from_pem(include_bytes!("./riotgames.pem")).unwrap();
         let tls = native_tls::TlsConnector::builder()
             .add_root_certificate(cert)
