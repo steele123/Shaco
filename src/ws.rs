@@ -23,7 +23,7 @@ impl LcuWebsocketClient {
     /// Tries to establish a connection to the LCU Websocket API \
     /// Returns an [LcuWebsocketError] if the API is not reachable
     pub async fn connect() -> Result<Self, LcuWebsocketError> {
-        let (auth_token, port, remoting_token, remoting_port ) = process_info::get_auth_info()
+        let info = process_info::get_lcu_client_info()
             .map_err(|e| LcuWebsocketError::LcuNotAvailable(e.to_string()))?;
 
         let cert = native_tls::Certificate::from_pem(include_bytes!("./riotgames.pem")).unwrap();
@@ -33,12 +33,12 @@ impl LcuWebsocketClient {
             .unwrap();
         let connector = Connector::NativeTls(tls);
 
-        let mut url = format!("wss://127.0.0.1:{remoting_port}")
+        let mut url = format!("wss://127.0.0.1:{}", info.remoting_port)
             .into_client_request()
             .map_err(|_| LcuWebsocketError::AuthError)?;
         url.headers_mut().insert(
             "Authorization",
-            HeaderValue::from_str(format!("Basic {remoting_token}").as_str())
+            HeaderValue::from_str(format!("Basic {}", info.remoting_token).as_str())
                 .map_err(|_| LcuWebsocketError::AuthError)?,
         );
 
@@ -97,7 +97,9 @@ impl Stream for LcuWebsocketClient {
             return match self.0.poll_next_unpin(cx) {
                 Poll::Pending => Poll::Pending,
                 Poll::Ready(Some(Ok(Message::Text(text)))) => {
-                    let Ok(event) = serde_json::from_str::<LcuEvent>(&text) else { continue };
+                    let Ok(event) = serde_json::from_str::<LcuEvent>(&text) else {
+                        continue;
+                    };
                     Poll::Ready(Some(event))
                 }
                 Poll::Ready(Some(Ok(Message::Close(_))) | Some(Err(_)) | None) => Poll::Ready(None),

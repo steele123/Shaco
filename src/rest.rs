@@ -21,17 +21,12 @@ type Error = Box<dyn std::error::Error>;
 
 impl RESTClient {
     /// Create a new instance of the LCU REST wrapper
-    pub fn new() -> Result<Self, Error> {
-        let (auth_token, port, remoting_token, remoting_port) = process_info::get_auth_info()?;
-        let reqwest_client = build_reqwest_client(Some(&auth_token));
+    pub fn new(lcu_info: LCUClientInfo) -> Result<Self, Error> {
+        let reqwest_client = build_reqwest_client(Some(&lcu_info.token));
+
         Ok(Self {
             reqwest_client,
-            lcu_client_info: LCUClientInfo {
-                port: port.parse::<u16>().unwrap(),
-                token: auth_token,
-                remoting_port: remoting_port.parse::<u16>().unwrap(),
-                remoting_token,
-            },
+            lcu_client_info: lcu_info,
         })
     }
 
@@ -39,7 +34,10 @@ impl RESTClient {
     pub async fn get(&self, endpoint: String) -> Result<serde_json::Value, reqwest::Error> {
         let req: serde_json::Value = self
             .reqwest_client
-            .get(format!("https://127.0.0.1:{}{}", self.lcu_client_info.port, endpoint))
+            .get(format!(
+                "https://127.0.0.1:{}{}",
+                self.lcu_client_info.port, endpoint
+            ))
             .send()
             .await?
             .json()
@@ -56,7 +54,10 @@ impl RESTClient {
     ) -> Result<serde_json::Value, reqwest::Error> {
         let req: serde_json::Value = self
             .reqwest_client
-            .post(format!("https://127.0.0.1:{}{}", self.lcu_client_info.port, endpoint))
+            .post(format!(
+                "https://127.0.0.1:{}{}",
+                self.lcu_client_info.port, endpoint
+            ))
             .json(&body)
             .send()
             .await?
@@ -74,7 +75,10 @@ impl RESTClient {
     ) -> Result<serde_json::Value, reqwest::Error> {
         let req: serde_json::Value = self
             .reqwest_client
-            .put(format!("https://127.0.0.1:{}{}", self.lcu_client_info.port, endpoint))
+            .put(format!(
+                "https://127.0.0.1:{}{}",
+                self.lcu_client_info.port, endpoint
+            ))
             .json(&body)
             .send()
             .await?
@@ -88,7 +92,10 @@ impl RESTClient {
     pub async fn delete(&self, endpoint: String) -> Result<serde_json::Value, reqwest::Error> {
         let req: serde_json::Value = self
             .reqwest_client
-            .delete(format!("https://127.0.0.1:{}{}", self.lcu_client_info.port, endpoint))
+            .delete(format!(
+                "https://127.0.0.1:{}{}",
+                self.lcu_client_info.port, endpoint
+            ))
             .send()
             .await?
             .json()

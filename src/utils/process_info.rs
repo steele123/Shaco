@@ -1,7 +1,9 @@
-use base64::{engine::general_purpose, Engine};
-use sysinfo::{ProcessExt, System, SystemExt};
+use std::ops::Deref;
 
-use crate::error::ProcessInfoError;
+use base64::{engine::general_purpose, Engine};
+use sysinfo::{Process, ProcessExt, System, SystemExt};
+
+use crate::{error::ProcessInfoError, rest::LCUClientInfo};
 
 #[cfg(target_os = "windows")]
 const TARGET_PROCESS: &str = "LeagueClientUx.exe";
@@ -18,33 +20,41 @@ const REMOTING_PORT_ARG: &str = "--app-port=";
 
 const REMOTING_TOKEN_ARG: &str = "--remoting-auth-token=";
 
-pub(crate) fn get_auth_info() -> Result<(String, String, String, String), ProcessInfoError> {
+pub fn get_league_process_args() -> Option<String> {
     let mut sys = System::new_all();
     sys.refresh_processes();
 
-    let args = sys
+    let process = sys
         .processes()
-        .values()
-        .find(|p| p.name() == TARGET_PROCESS)
-        .map(|p| p.cmd())
-        .ok_or(ProcessInfoError::ProcessNotAvailable)?;
-
-    let port = get_arg(PORT_ARG, args)?;
-    let auth_token = get_arg(TOKEN_ARG, args)?;
-    let remoting_port = get_arg(REMOTING_PORT_ARG, args)?;
-    let remoting_token = get_arg(REMOTING_TOKEN_ARG, args)?;
-
-    Ok((
-        general_purpose::STANDARD.encode(format!("riot:{}", auth_token)),
-        port,
-        general_purpose::STANDARD.encode(format!("riot:{}", remoting_token)),
-        remoting_port,
-    ))
+        .iter()
+        .find(|p| p.1.name().contains(TARGET_PROCESS));
+    
+    process.map(|p| p.1.cmd().join(" "))
 }
 
-fn get_arg(arg: &str, args: &[String]) -> Result<String, ProcessInfoError> {
-    args.iter()
-        .find(|a| a.starts_with(arg))
-        .map(|a| a.strip_prefix(arg).unwrap().to_string())
-        .ok_or(ProcessInfoError::AuthTokenNotFound)
+pub fn get_auth_info(args: String) -> Result<LCUClientInfo, ProcessInfoError> {
+    let port = get_arg(PORT_ARG, &args)?;
+    let auth_token = get_arg(TOKEN_ARG, &args)?;
+    let remoting_port = get_arg(REMOTING_PORT_ARG, &args)?;
+    let remoting_token = get_arg(REMOTING_TOKEN_ARG, &args)?;
+
+    Ok(LCUClientInfo {
+        port: port.parse::<u16>().unwrap(),
+        token: general_purpose::STANDARD.encode(format!("riot:{}", auth_token)),
+        remoting_port: remoting_port.parse::<u16>().unwrap(),
+        remoting_token: general_purpose::STANDARD.encode(format!("riot:{}", remoting_token)),
+    })
+}
+
+pub fn get_lcu_client_info() -> Result<LCUClientInfo, ProcessInfoError> {
+    get_league_process_args()
+        .ok_or(ProcessInfoError::ProcessNotAvailable)
+        .and_then(get_auth_info)
+}
+
+fn get_arg(arg: &str, args: &str) -> Result<String, ProcessInfoError> {
+    args.split(' ')
+        .find(|s| s.contains(arg))
+        .ok_or(ProcessInfoError::ProcessNotAvailable)
+        .map(|s| s.replace(arg, ""))
 }
