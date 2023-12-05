@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use reqwest::{header, Certificate};
 
-pub(crate) fn build_reqwest_client(auth_token: Option<String>) -> reqwest::Client {
+pub(crate) fn build_reqwest_client(auth_token: Option<&String>) -> reqwest::Client {
     let cert = Certificate::from_pem(include_bytes!("../riotgames.pem")).unwrap();
     let mut headers = header::HeaderMap::new();
 
