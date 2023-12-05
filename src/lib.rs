@@ -17,6 +17,6 @@ pub mod ingame;
 pub mod model;
 /// Contains the [RESTClient](rest::RESTClient)
 pub mod rest;
-mod utils;
+pub mod utils;
 /// Contains the [LcuWebsocketClient](ws::LcuWebsocketClient)
 pub mod ws;
