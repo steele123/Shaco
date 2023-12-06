@@ -2,7 +2,7 @@ use std::{error::Error, fmt, fmt::Display};
 
 /// Errors that can occur when trying to get the Riot process information
 #[derive(Debug, Clone)]
-pub(crate) enum ProcessInfoError {
+pub enum ProcessInfoError {
     /// League client has not been started
     ProcessNotAvailable,
     /// There has been an error getting the API port
