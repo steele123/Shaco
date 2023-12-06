@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 use crate::utils::{process_info, request::build_reqwest_client};
 
@@ -9,7 +9,7 @@ pub struct RESTClient {
     pub lcu_client_info: LCUClientInfo,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct LCUClientInfo {
     pub port: u16,
     pub token: String,
