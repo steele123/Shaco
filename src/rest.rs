@@ -5,8 +5,9 @@ use crate::utils::{process_info, request::build_reqwest_client};
 #[derive(Clone)]
 /// A client for the League-Client(LCU) REST API
 pub struct RESTClient {
-    reqwest_client: reqwest::Client,
-    pub lcu_client_info: LCUClientInfo,
+    client: reqwest::Client,
+    remoting: bool,
+    pub lcu_client_info: LCUClientInfo
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -21,22 +22,36 @@ type Error = Box<dyn std::error::Error>;
 
 impl RESTClient {
     /// Create a new instance of the LCU REST wrapper
-    pub fn new(lcu_info: LCUClientInfo) -> Result<Self, Error> {
-        let reqwest_client = build_reqwest_client(Some(&lcu_info.token));
+    pub fn new(lcu_info: LCUClientInfo, remoting: bool) -> Result<Self, Error> {
+        let client = if remoting {
+            build_reqwest_client(Some(&lcu_info.remoting_token))
+        } else {
+            build_reqwest_client(Some(&lcu_info.token))
+        };
 
         Ok(Self {
-            reqwest_client,
+            client,
             lcu_client_info: lcu_info,
+            remoting,
         })
+    }
+
+    fn get_port(&self) -> u16 {
+        if self.remoting {
+            self.lcu_client_info.remoting_port
+        } else {
+            self.lcu_client_info.port
+        }
     }
 
     /// Make a get request to the specified endpoint
     pub async fn get(&self, endpoint: String) -> Result<serde_json::Value, reqwest::Error> {
+        let port = self.get_port();
         let req: serde_json::Value = self
-            .reqwest_client
+            .client
             .get(format!(
                 "https://127.0.0.1:{}{}",
-                self.lcu_client_info.port, endpoint
+                port, endpoint
             ))
             .send()
             .await?
@@ -52,11 +67,12 @@ impl RESTClient {
         endpoint: String,
         body: T,
     ) -> Result<serde_json::Value, reqwest::Error> {
+        let port = self.get_port();
         let req: serde_json::Value = self
-            .reqwest_client
+            .client
             .post(format!(
                 "https://127.0.0.1:{}{}",
-                self.lcu_client_info.port, endpoint
+                port, endpoint
             ))
             .json(&body)
             .send()
@@ -73,11 +89,12 @@ impl RESTClient {
         endpoint: String,
         body: T,
     ) -> Result<serde_json::Value, reqwest::Error> {
+        let port = self.get_port();
         let req: serde_json::Value = self
-            .reqwest_client
+            .client
             .put(format!(
                 "https://127.0.0.1:{}{}",
-                self.lcu_client_info.port, endpoint
+                port, endpoint
             ))
             .json(&body)
             .send()
@@ -90,11 +107,12 @@ impl RESTClient {
 
     /// Make a delete request to the specified endpoint
     pub async fn delete(&self, endpoint: String) -> Result<serde_json::Value, reqwest::Error> {
+        let port = self.get_port();
         let req: serde_json::Value = self
-            .reqwest_client
+            .client
             .delete(format!(
                 "https://127.0.0.1:{}{}",
-                self.lcu_client_info.port, endpoint
+                port, endpoint
             ))
             .send()
             .await?
