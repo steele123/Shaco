@@ -83,6 +83,25 @@ impl RESTClient {
         Ok(req)
     }
 
+    pub async fn post_no_body<T: Serialize>(
+        &self,
+        endpoint: String
+    ) -> Result<serde_json::Value, reqwest::Error> {
+        let port = self.get_port();
+        let req: serde_json::Value = self
+            .client
+            .post(format!(
+                "https://127.0.0.1:{}{}",
+                port, endpoint
+            ))
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        Ok(req)
+    }
+
     /// Make a put request to the specified endpoint
     pub async fn put<T: Serialize>(
         &self,
