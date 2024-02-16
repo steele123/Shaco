@@ -83,7 +83,7 @@ impl RESTClient {
         Ok(req)
     }
 
-    pub async fn post_no_body<T: Serialize>(
+    pub async fn post_no_body(
         &self,
         endpoint: String
     ) -> Result<serde_json::Value, reqwest::Error> {
