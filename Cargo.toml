@@ -10,7 +10,7 @@ homepage = "https://github.com/Leastrio/Shaco"
 repository = "https://github.com/Leastrio/Shaco"
 
 [dependencies]
-sysinfo = "0.28.0"
+sysinfo = { version = "0.30.13", default-features = false }
 base64 = "0.21.0"
 native-tls = "0.2.11"
 futures-util = "0.3.25"

@@ -1,7 +1,5 @@
-use std::ops::Deref;
-
 use base64::{engine::general_purpose, Engine};
-use sysinfo::{Process, ProcessExt, System, SystemExt};
+use sysinfo::{ProcessRefreshKind, System, UpdateKind};
 
 use crate::{error::ProcessInfoError, rest::LCUClientInfo};
 
@@ -20,16 +18,25 @@ const REMOTING_PORT_ARG: &str = "--app-port=";
 
 const REMOTING_TOKEN_ARG: &str = "--remoting-auth-token=";
 
+/// Finds the League Client and returns its command line.
+///
+/// Only process names are listed; the command line is read for the League Client process alone,
+/// so no other process on the machine is inspected.
 pub fn get_league_process_args() -> Option<String> {
-    let mut sys = System::new_all();
-    sys.refresh_processes();
+    let mut sys = System::new();
+    sys.refresh_processes_specifics(ProcessRefreshKind::new());
 
-    let process = sys
+    let pid = sys
         .processes()
         .iter()
-        .find(|p| p.1.name().contains(TARGET_PROCESS));
-    
-    process.map(|p| p.1.cmd().join(" "))
+        .find(|(_, process)| process.name().contains(TARGET_PROCESS))
+        .map(|(pid, _)| *pid)?;
+
+    if !sys.refresh_process_specifics(pid, ProcessRefreshKind::new().with_cmd(UpdateKind::Always)) {
+        return None;
+    }
+
+    sys.process(pid).map(|process| process.cmd().join(" "))
 }
 
 pub fn get_auth_info(args: String) -> Result<LCUClientInfo, ProcessInfoError> {
