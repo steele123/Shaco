@@ -47,7 +47,7 @@ impl LcuWebsocketClient {
         );
 
         let (ws_stream, _response) =
-            tokio_tungstenite::connect_async_tls_with_config(url, None, Some(connector))
+            tokio_tungstenite::connect_async_tls_with_config(url, None, false, Some(connector))
                 .await
                 .map_err(|e| LcuWebsocketError::Disconnected(e.to_string()))?;
 
