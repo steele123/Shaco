@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use serde::{Serialize, Deserialize};
 
 use crate::utils::{process_info, request::build_reqwest_client};
@@ -61,6 +63,29 @@ impl RESTClient {
         Ok(req)
     }
 
+    /// Make a get request that may take longer than the client's default timeout, e.g. one the
+    /// League Client answers by asking Riot's servers (match history)
+    pub async fn get_with_timeout(
+        &self,
+        endpoint: String,
+        timeout: Duration,
+    ) -> Result<serde_json::Value, reqwest::Error> {
+        let port = self.get_port();
+        let req: serde_json::Value = self
+            .client
+            .get(format!(
+                "https://127.0.0.1:{}{}",
+                port, endpoint
+            ))
+            .timeout(timeout)
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        Ok(req)
+    }
+
     /// Make a post request to the specified endpoint
     pub async fn post<T: Serialize>(
         &self,
@@ -68,7 +93,7 @@ impl RESTClient {
         body: T,
     ) -> Result<serde_json::Value, reqwest::Error> {
         let port = self.get_port();
-        let req: serde_json::Value = self
+        let response = self
             .client
             .post(format!(
                 "https://127.0.0.1:{}{}",
@@ -76,9 +101,8 @@ impl RESTClient {
             ))
             .json(&body)
             .send()
-            .await?
-            .json()
             .await?;
+        let req = action_response(response).await?;
 
         Ok(req)
     }
@@ -88,16 +112,15 @@ impl RESTClient {
         endpoint: String
     ) -> Result<serde_json::Value, reqwest::Error> {
         let port = self.get_port();
-        let req: serde_json::Value = self
+        let response = self
             .client
             .post(format!(
                 "https://127.0.0.1:{}{}",
                 port, endpoint
             ))
             .send()
-            .await?
-            .json()
             .await?;
+        let req = action_response(response).await?;
 
         Ok(req)
     }
@@ -109,7 +132,7 @@ impl RESTClient {
         body: T,
     ) -> Result<serde_json::Value, reqwest::Error> {
         let port = self.get_port();
-        let req: serde_json::Value = self
+        let response = self
             .client
             .put(format!(
                 "https://127.0.0.1:{}{}",
@@ -117,9 +140,8 @@ impl RESTClient {
             ))
             .json(&body)
             .send()
-            .await?
-            .json()
             .await?;
+        let req = action_response(response).await?;
 
         Ok(req)
     }
@@ -127,17 +149,26 @@ impl RESTClient {
     /// Make a delete request to the specified endpoint
     pub async fn delete(&self, endpoint: String) -> Result<serde_json::Value, reqwest::Error> {
         let port = self.get_port();
-        let req: serde_json::Value = self
+        let response = self
             .client
             .delete(format!(
                 "https://127.0.0.1:{}{}",
                 port, endpoint
             ))
             .send()
-            .await?
-            .json()
             .await?;
+        let req = action_response(response).await?;
 
         Ok(req)
     }
+}
+
+/// Fails on an error status, and reads an empty answer (League often replies 204 No Content to
+/// actions like accepting a ready check) as null instead of a JSON parse error.
+async fn action_response(response: reqwest::Response) -> Result<serde_json::Value, reqwest::Error> {
+    let response = response.error_for_status()?;
+    if response.status() == reqwest::StatusCode::NO_CONTENT || response.content_length() == Some(0) {
+        return Ok(serde_json::Value::Null);
+    }
+    response.json().await
 }
